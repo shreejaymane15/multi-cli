@@ -705,6 +705,17 @@ function Start-OsUserInteractiveProcess {
         [string[]]$BinaryArgs
     )
     $credential = New-OsUserCredential -Username $Username -CredentialTarget $CredentialTarget
+    $startProcessCommand = Get-Command Start-Process -ErrorAction SilentlyContinue
+    if ($Binary -ne $env:ComSpec -and $startProcessCommand -and $startProcessCommand.CommandType -eq [Management.Automation.CommandTypes]::Cmdlet) {
+        $argString = if ($null -ne $BinaryArgs -and $BinaryArgs.Length -gt 0) {
+            ($BinaryArgs | ForEach-Object { if ($_ -match '\s') { "`"$_`"" } else { $_ } }) -join ' '
+        } else { '' }
+        $startCmd = if ($argString) { "start `"`" `"$Binary`" $argString" } else { "start `"`" `"$Binary`"" }
+        $workingDir = Split-Path -Parent $Binary
+        if (-not $workingDir -or -not (Test-Path -LiteralPath $workingDir)) { $workingDir = $env:USERPROFILE }
+        $process = Microsoft.PowerShell.Management\Start-Process -FilePath $env:ComSpec -ArgumentList @('/c', $startCmd) -Credential $credential -LoadUserProfile -WorkingDirectory $workingDir -WindowStyle Hidden -PassThru
+        return [bool]$process
+    }
     $parameters = @{
         FilePath = $Binary
         Credential = $credential
