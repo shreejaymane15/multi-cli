@@ -711,8 +711,8 @@ function Start-OsUserInteractiveProcess {
             ($BinaryArgs | ForEach-Object { if ($_ -match '\s') { "`"$_`"" } else { $_ } }) -join ' '
         } else { '' }
         $startCmd = if ($argString) { "start `"`" `"$Binary`" $argString" } else { "start `"`" `"$Binary`"" }
-        $workingDir = Split-Path -Parent $Binary
-        if (-not $workingDir -or -not (Test-Path -LiteralPath $workingDir)) { $workingDir = $env:USERPROFILE }
+        $currentDir = (Get-Location).Path
+        $workingDir = if ($currentDir -and (Test-Path -LiteralPath $currentDir)) { $currentDir } else { Split-Path -Parent $Binary }
         $process = Microsoft.PowerShell.Management\Start-Process -FilePath $env:ComSpec -ArgumentList @('/c', $startCmd) -Credential $credential -LoadUserProfile -WorkingDirectory $workingDir -WindowStyle Hidden -PassThru
         return [bool]$process
     }
