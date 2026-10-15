@@ -244,6 +244,20 @@ function Grant-OsUserAccess {
     if ($LASTEXITCODE -ne 0) { throw "Failed to grant OS user '$Username' access to '$Path': $output" }
 }
 
+# Grant the sandbox user Read & Execute on the binary directory when located
+# in the operator's private user profile (e.g. %LOCALAPPDATA%).
+function Grant-OsUserBinaryAccess {
+    param([string]$BinaryPath, [string]$Username)
+    if (-not $BinaryPath) { return }
+    try {
+        $resolved = [System.IO.Path]::GetFullPath($BinaryPath)
+        if ($resolved.StartsWith($env:USERPROFILE, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $parentDir = Split-Path -Parent $resolved
+            $null = Invoke-OsUserNative -FilePath icacls.exe -NativeArgs @($parentDir, '/grant', "${Username}:(OI)(CI)RX", '/T')
+        }
+    } catch {}
+}
+
 # Provision the sandbox user for a profile. Idempotent: an existing user is
 # adopted only when the profile's ownership record proves multi-cli created
 # it. Elevation is checked BEFORE any creation attempt. Returns the username.
@@ -724,6 +738,7 @@ function Invoke-OsUserLaunch {
         }
     }
     $plan = Get-OsUserLaunchPlan -Adapter $Adapter -ProfileDir $ProfileDir -Binary $Binary -BinaryArgs $BinaryArgs -SandboxHome $SandboxHome
+    Grant-OsUserBinaryAccess -BinaryPath $Binary -Username $username
     if ($plan.Mode -eq 'detached') {
         if (-not (Start-OsUserInteractiveProcess -Username $username -CredentialTarget $plan.CredentialTarget -Binary $Binary -BinaryArgs $BinaryArgs)) {
             throw "OS-user launch of '$Binary' did not start."
