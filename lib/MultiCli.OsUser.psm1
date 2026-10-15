@@ -228,7 +228,7 @@ function New-OsUserPassword {
 
 function New-OsUserAccount {
     param([string]$Username, [string]$Password, [string]$Tool)
-    $output = Invoke-OsUserNative -FilePath net.exe -NativeArgs @('user', $Username, $Password, '/add', '/expires:never', '/passwordchg:no')
+    $output = Invoke-OsUserNative -FilePath net.exe -NativeArgs @('user', $Username, $Password, '/add', '/expires:never', '/passwordchg:no', '/y')
     if ($LASTEXITCODE -ne 0) { throw "Failed to create OS user '$Username': $output" }
     # net user /add assigns the default local Users membership. Avoid passing
     # the localized group name to net localgroup on non-English Windows.
@@ -697,7 +697,7 @@ function Start-OsUserInteractiveProcess {
         LoadUserProfile = $true
         PassThru = $true
     }
-    if (@($BinaryArgs).Count -gt 0) { $parameters.ArgumentList = @($BinaryArgs) }
+    if ($null -ne $BinaryArgs -and $BinaryArgs.Length -gt 0) { $parameters.ArgumentList = @($BinaryArgs) }
     $process = Start-Process @parameters
     return [bool]$process
 }
